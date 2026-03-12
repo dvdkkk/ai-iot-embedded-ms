@@ -179,12 +179,7 @@ export const ConsultationForm: React.FC = () => {
                       <label className="text-xs font-bold text-gray-700 ml-1">연락처</label>
                       <input required name="연락처" type="tel" placeholder="010-0000-0000" className="w-full px-3 py-2 md:py-2.5 rounded-lg border border-gray-200 focus:border-purple-800 focus:ring-2 focus:ring-purple-800/20 outline-none transition-all text-sm text-black" />
                   </div>
-
-                  <div className="space-y-0.5 md:space-y-1">
-                      <label className="text-xs font-bold text-gray-700 ml-1">이메일</label>
-                      <input required name="email" type="email" placeholder="example@email.com" className="w-full px-3 py-2 md:py-2.5 rounded-lg border border-gray-200 focus:border-purple-800 focus:ring-2 focus:ring-purple-800/20 outline-none transition-all text-sm text-black" />
-                  </div>
-
+                  
                   <div className="space-y-0.5 md:space-y-1">
                       <label className="text-xs font-bold text-gray-700 ml-1">교육목적</label>
                       <div className="flex flex-wrap gap-1.5 md:gap-2">
@@ -199,7 +194,7 @@ export const ConsultationForm: React.FC = () => {
 
                   <div className="space-y-0.5 md:space-y-1">
                       <label className="text-xs font-bold text-gray-700 ml-1">문의내용</label>
-                      <textarea name="message" rows={2} placeholder="궁금하신 점을 자유롭게 적어주세요." className="w-full px-3 py-2 md:py-2.5 rounded-lg border border-gray-200 focus:border-purple-800 focus:ring-2 focus:ring-purple-800/20 outline-none transition-all resize-none text-sm text-black" required></textarea>
+                      <textarea name="message" rows={2} placeholder="궁금하신 점을 자유롭게 적어주세요. (선택)" className="w-full px-3 py-2 md:py-2.5 rounded-lg border border-gray-200 focus:border-purple-800 focus:ring-2 focus:ring-purple-800/20 outline-none transition-all resize-none text-sm text-black"></textarea>
                   </div>
 
                   {/* Privacy Policy */}
