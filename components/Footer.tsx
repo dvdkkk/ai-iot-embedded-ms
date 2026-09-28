@@ -1,6 +1,26 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 export const Footer: React.FC = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handlePhoneClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    if (!mobile) {
+      e.preventDefault();
+      window.open('https://naver.me/FG794pnA', '_blank', 'noopener,noreferrer');
+    }
+  };
+
   useEffect(() => {
     // 리포트2.0 로그분석코드 시작
     const sTime = new Date().getTime();
@@ -30,8 +50,12 @@ export const Footer: React.FC = () => {
             <div className="md:text-right">
                 <p className="font-bold text-zinc-400 mb-2">고객센터</p>
                 <a 
-                  href="tel:01046312547" 
-                  className="text-2xl font-bold text-white hover:text-purple-800 transition-colors md:pointer-events-none md:cursor-default md:hover:text-white inline-block"
+                  href={isMobile ? "tel:01046312547" : "https://naver.me/FG794pnA"} 
+                  target={isMobile ? undefined : "_blank"}
+                  rel={isMobile ? undefined : "noopener noreferrer"}
+                  onClick={handlePhoneClick}
+                  title={isMobile ? "전화 걸기" : "온라인 상담신청 이동"}
+                  className="text-2xl font-bold text-white hover:text-purple-400 transition-colors inline-block cursor-pointer"
                 >
                   010-4631-2547
                 </a>
