@@ -83,8 +83,11 @@ interface ContentContextType {
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
-// 버전을 v12로 올려서 로컬 스토리지를 강제 갱신함
-const STORAGE_KEY = 'site_content_v12';
+// 버전을 v13로 올려서 로컬 스토리지를 강제 갱신함
+const STORAGE_KEY = 'site_content_v13';
+
+// 구글 스프레드시트 웹 게시 CSV URL ('시트1')
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRzLxHiDq6F7MLg8ieg3CaVCAxZY1evEPiJN2Tn24LY2Xgv3g8cZJwrG4nnwLEExn1CD_bzRUZVh4UA/pub?output=csv';
 
 // CSV 파서 함수 (콤마 및 따옴표 처리)
 function parseCSVRow(text: string): string[] {
@@ -122,11 +125,25 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     }
 
-    // 접속 또는 새로고침 시 시트 파일에서 D4 셀(4번째 행, 4번째 열) 값을 동적으로 읽어옴
+    // 접속 또는 새로고침 시 구글 스프레드시트에서 D4 셀(4번째 행, 4번째 열) 값을 실시간으로 읽어옴
     const fetchSheetDate = async () => {
       try {
-        const res = await fetch('/assets/aistudio/_______________bdb6642d?t=' + Date.now());
-        if (res.ok) {
+        // 캐시 방지를 위해 타임스탬프 쿼리 추가
+        const cacheBuster = `&_t=${Date.now()}`;
+        let res: Response | null = null;
+        
+        try {
+          res = await fetch(GOOGLE_SHEET_CSV_URL + cacheBuster);
+        } catch (fetchErr) {
+          console.warn("Direct Google Sheet fetch error, trying fallback", fetchErr);
+        }
+
+        // 구글 시트 요청 실패 시 로컬 백업 파일에서 조회
+        if (!res || !res.ok) {
+          res = await fetch('/assets/aistudio/___________94beff6a.txt?t=' + Date.now()).catch(() => null);
+        }
+
+        if (res && res.ok) {
           const csvText = await res.text();
           const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
           if (lines.length >= 4) {
