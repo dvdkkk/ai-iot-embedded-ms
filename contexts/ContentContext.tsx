@@ -83,30 +83,48 @@ interface ContentContextType {
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
-// 버전을 v13로 올려서 로컬 스토리지를 강제 갱신함
-const STORAGE_KEY = 'site_content_v13';
+// 버전을 v14로 올려서 로컬 스토리지를 강제 갱신함
+const STORAGE_KEY = 'site_content_v14';
 
 // 구글 스프레드시트 웹 게시 CSV URL ('시트1')
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRzLxHiDq6F7MLg8ieg3CaVCAxZY1evEPiJN2Tn24LY2Xgv3g8cZJwrG4nnwLEExn1CD_bzRUZVh4UA/pub?output=csv';
 
-// CSV 파서 함수 (콤마 및 따옴표 처리)
-function parseCSVRow(text: string): string[] {
-  const result: string[] = [];
-  let cur = '';
+// 정밀 CSV 파서 함수 (콤마, 따옴표 이스케이프, 줄바꿈 완전 지원)
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
   let inQuotes = false;
   for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      result.push(cur.trim());
-      cur = '';
+    const c = text[i];
+    const next = text[i + 1];
+    if (c === '"') {
+      if (inQuotes && next === '"') {
+        field += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      row.push(field.trim());
+      field = '';
+    } else if ((c === '\r' || c === '\n') && !inQuotes) {
+      if (c === '\r' && next === '\n') {
+        i++;
+      }
+      row.push(field.trim());
+      rows.push(row);
+      row = [];
+      field = '';
     } else {
-      cur += char;
+      field += c;
     }
   }
-  result.push(cur.trim());
-  return result;
+  if (field.length > 0 || row.length > 0) {
+    row.push(field.trim());
+    rows.push(row);
+  }
+  return rows;
 }
 
 export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -128,27 +146,35 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     // 접속 또는 새로고침 시 구글 스프레드시트에서 D4 셀(4번째 행, 4번째 열) 값을 실시간으로 읽어옴
     const fetchSheetDate = async () => {
       try {
-        // 캐시 방지를 위해 타임스탬프 쿼리 추가
-        const cacheBuster = `&_t=${Date.now()}`;
+        // 캐시 없는 최신 데이터 즉시 반영: 타임스탬프 파라미터 및 cache: 'no-store' 옵션 적용
+        const requestUrl = `${GOOGLE_SHEET_CSV_URL}&_t=${Date.now()}`;
         let res: Response | null = null;
         
         try {
-          res = await fetch(GOOGLE_SHEET_CSV_URL + cacheBuster);
+          res = await fetch(requestUrl, {
+            cache: 'no-store',
+            headers: {
+              'Pragma': 'no-cache',
+              'Cache-Control': 'no-cache, no-store, must-revalidate'
+            }
+          });
         } catch (fetchErr) {
           console.warn("Direct Google Sheet fetch error, trying fallback", fetchErr);
         }
 
-        // 구글 시트 요청 실패 시 로컬 백업 파일에서 조회
+        // 구글 시트 직접 요청 실패 시 로컬 백업 파일에서 조회
         if (!res || !res.ok) {
-          res = await fetch('/assets/aistudio/___________94beff6a.txt?t=' + Date.now()).catch(() => null);
+          res = await fetch(`/assets/aistudio/___________94beff6a.txt?_t=${Date.now()}`, {
+            cache: 'no-store'
+          }).catch(() => null);
         }
 
         if (res && res.ok) {
           const csvText = await res.text();
-          const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
-          if (lines.length >= 4) {
-            const row4 = parseCSVRow(lines[3]);
-            // D열 (0-index 기준 3번째 index)
+          const rows = parseCSV(csvText);
+          // 4번째 행 (index 3), D열 (index 3) => D4 셀
+          if (rows.length >= 4) {
+            const row4 = rows[3];
             const d4Value = row4[3];
             if (d4Value && d4Value.trim()) {
               const updatedStats = currentContent.hero.stats.map(s => 
