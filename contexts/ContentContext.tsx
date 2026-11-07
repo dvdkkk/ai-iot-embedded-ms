@@ -10,7 +10,7 @@ const defaultContent: SiteContent = {
     highlight: "AI사물인터넷 MCU기반\n임베디드 펌웨어 전문가로",
     description: "온 디바이스AI, 스마트팩토리, 스마트팜 등에 활용되는 Cortex-M4/Mx ARM MCU 기반 임베디드/펌웨어 실무 교육 과정입니다. 한국직업능력교육원에서 임베디드 전문가로 거듭나세요.",
     stats: [
-      { label: '교육기간', value: '26.10.28개강(6개월과정)' },
+      { label: '교육기간', value: '26.12.21개강(6개월과정)' },
       { label: '교육시간', value: '월~금 09:00~17:40' },
       { label: '수강료', value: '95~100% 국비지원' },
       { label: '수업형태', value: '오프라인 수업' },
@@ -83,24 +83,80 @@ interface ContentContextType {
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
-// 버전을 v8로 올려서 로컬 스토리지를 강제 갱신함
-const STORAGE_KEY = 'site_content_v11';
+// 버전을 v12로 올려서 로컬 스토리지를 강제 갱신함
+const STORAGE_KEY = 'site_content_v12';
+
+// CSV 파서 함수 (콤마 및 따옴표 처리)
+function parseCSVRow(text: string): string[] {
+  const result: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(cur.trim());
+      cur = '';
+    } else {
+      cur += char;
+    }
+  }
+  result.push(cur.trim());
+  return result;
+}
 
 export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [content, setContent] = useState<SiteContent>(defaultContent);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    let currentContent = defaultContent;
     const savedContent = localStorage.getItem(STORAGE_KEY);
     if (savedContent) {
       try {
         const parsed = JSON.parse(savedContent);
-        setContent({ ...defaultContent, ...parsed });
+        currentContent = { ...defaultContent, ...parsed };
       } catch (e) {
         console.error("Failed to load content", e);
       }
     }
 
+    // 접속 또는 새로고침 시 시트 파일에서 D4 셀(4번째 행, 4번째 열) 값을 동적으로 읽어옴
+    const fetchSheetDate = async () => {
+      try {
+        const res = await fetch('/assets/aistudio/_______________bdb6642d?t=' + Date.now());
+        if (res.ok) {
+          const csvText = await res.text();
+          const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+          if (lines.length >= 4) {
+            const row4 = parseCSVRow(lines[3]);
+            // D열 (0-index 기준 3번째 index)
+            const d4Value = row4[3];
+            if (d4Value && d4Value.trim()) {
+              const updatedStats = currentContent.hero.stats.map(s => 
+                s.label === '교육기간' ? { ...s, value: d4Value.trim() } : s
+              );
+              const updated = {
+                ...currentContent,
+                hero: {
+                  ...currentContent.hero,
+                  stats: updatedStats
+                }
+              };
+              setContent(updated);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Sheet dynamic fetch fallback to defaultContent", err);
+      }
+      setContent(currentContent);
+    };
+
+    fetchSheetDate();
     setIsLoaded(true);
   }, []);
 
